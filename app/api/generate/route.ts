@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { GoogleGenAI } from "@google/genai";
-import { type NextRequest, NextResponse } from "next/server";
+import { google } from "@ai-sdk/google";
+import { streamText } from "ai";
+import type { NextRequest } from "next/server";
 
 const strudelRef = readFileSync(join(process.cwd(), "STRUDEL.md"), "utf-8");
 
@@ -26,70 +27,37 @@ Here is the complete Strudel reference:
 
 ${strudelRef}`;
 
-let client: GoogleGenAI | null = null;
-
-function getClient() {
-	if (!client) {
-		const apiKey = process.env.GEMINI_API_KEY;
-		if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
-		client = new GoogleGenAI({ apiKey });
-	}
-	return client;
-}
-
 export async function POST(req: NextRequest) {
-	const { command, currentCode } = await req.json();
+	const { messages, currentCode } = await req.json();
 
-	if (!command?.trim()) {
-		return NextResponse.json(
-			{ message: "No command provided.", code: null },
-			{ status: 400 },
-		);
+	const lastMessage = messages?.at(-1);
+	// AI SDK v6 sends parts array; extract text parts
+	const command = (
+		lastMessage?.parts
+			?.filter((p: { type: string }) => p.type === "text")
+			.map((p: { type: string; text: string }) => p.text)
+			.join("") ??
+		lastMessage?.content ??
+		""
+	).trim();
+
+	if (!command) {
+		return new Response(JSON.stringify({ error: "No command provided." }), {
+			status: 400,
+			headers: { "Content-Type": "application/json" },
+		});
 	}
 
-	try {
-		const ai = getClient();
+	const contextualPrompt = currentCode
+		? `Current code:\n\`\`\`\n${currentCode}\n\`\`\`\n\nCommand: ${command}`
+		: `Command: ${command}\n\nNo current code — create something fresh.`;
 
-		const userMessage = currentCode
-			? `Current code:\n\`\`\`\n${currentCode}\n\`\`\`\n\nCommand: ${command}`
-			: `Command: ${command}\n\nNo current code — create something fresh.`;
+	const result = streamText({
+		model: google("gemini-flash-latest"),
+		system: SYSTEM_PROMPT,
+		messages: [{ role: "user", content: contextualPrompt }],
+		temperature: 0.9,
+	});
 
-		const response = await ai.models.generateContent({
-			model: "gemini-flash-latest",
-			contents: [{ role: "user", parts: [{ text: userMessage }] }],
-			config: {
-				systemInstruction: SYSTEM_PROMPT,
-				temperature: 0.9,
-			},
-		});
-
-		const text = response.text ?? "";
-
-		// Strip markdown fences if model adds them anyway
-		const cleaned = text
-			.replace(/```json\n?/g, "")
-			.replace(/```\n?/g, "")
-			.trim();
-
-		let parsed: { code?: string; message?: string };
-		try {
-			parsed = JSON.parse(cleaned);
-		} catch {
-			return NextResponse.json(
-				{ message: "AI returned unparseable response. Try again.", code: null },
-				{ status: 500 },
-			);
-		}
-
-		return NextResponse.json({
-			code: parsed.code ?? null,
-			message: parsed.message ?? "Done.",
-		});
-	} catch (err) {
-		const message = err instanceof Error ? err.message : "Unknown error";
-		return NextResponse.json(
-			{ message: `Error: ${message}`, code: null },
-			{ status: 500 },
-		);
-	}
+	return result.toUIMessageStreamResponse();
 }

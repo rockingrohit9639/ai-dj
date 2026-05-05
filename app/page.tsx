@@ -1,7 +1,9 @@
 "use client";
 
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import dynamic from "next/dynamic";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { StrudelEditorHandle } from "@/components/strudel-editor";
 
 const StrudelEditor = dynamic(() => import("@/components/strudel-editor"), {
@@ -23,79 +25,99 @@ $: sound("bd ~ bd ~")
   .gain(1.2)
 `;
 
-interface Message {
-	id: number;
-	role: "user" | "assistant";
-	text: string;
-}
+const INITIAL_MESSAGES: UIMessage[] = [
+	{
+		id: "init",
+		role: "assistant",
+		parts: [
+			{
+				type: "text",
+				text: "Ready. Click the editor, Ctrl+Enter to start, then tell me what you want.",
+			},
+		],
+	},
+];
 
 export default function Home() {
-	const [messages, setMessages] = useState<Message[]>([
-		{
-			id: 0,
-			role: "assistant",
-			text: "Ready. Click the editor, Ctrl+Enter to start, then tell me what you want.",
-		},
-	]);
-	const [input, setInput] = useState("");
-	const [isThinking, setIsThinking] = useState(false);
 	const editorRef = useRef<StrudelEditorHandle>(null);
 	const currentCodeRef = useRef<string>(INITIAL_CODE);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const [input, setInput] = useState("");
 
-	function scrollToBottom() {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}
-
-	async function sendMessage() {
-		const text = input.trim();
-		if (!text || isThinking) return;
-
-		setInput("");
-		setMessages((prev) => [...prev, { id: Date.now(), role: "user", text }]);
-		setIsThinking(true);
-		scrollToBottom();
-
-		try {
-			const res = await fetch("/api/generate", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					command: text,
-					currentCode: currentCodeRef.current,
-				}),
-			});
-
-			const data = await res.json();
-
-			if (data.code && editorRef.current) {
-				currentCodeRef.current = data.code;
-				editorRef.current.setCode(data.code);
-			}
-
-			setMessages((prev) => [
-				...prev,
-				{ id: Date.now(), role: "assistant", text: data.message ?? "Done." },
-			]);
-		} catch {
-			setMessages((prev) => [
-				...prev,
-				{
-					id: Date.now(),
-					role: "assistant",
-					text: "Something went wrong. Try again.",
+	const transport = useMemo(
+		() =>
+			new DefaultChatTransport({
+				api: "/api/generate",
+				prepareSendMessagesRequest({ body, messages, ...rest }) {
+					return {
+						...rest,
+						body: { ...body, messages, currentCode: currentCodeRef.current },
+					};
 				},
-			]);
-		} finally {
-			setIsThinking(false);
-			scrollToBottom();
-		}
+			}),
+		[],
+	);
+
+	const { messages, sendMessage, status, error } = useChat({
+		transport,
+		messages: INITIAL_MESSAGES,
+		onFinish({ message }) {
+			const text = message.parts
+				.filter((p): p is { type: "text"; text: string } => p.type === "text")
+				.map((p) => p.text)
+				.join("");
+			const raw = text
+				.replace(/```json\n?/g, "")
+				.replace(/```\n?/g, "")
+				.trim();
+			try {
+				const parsed = JSON.parse(raw);
+				if (parsed.code && editorRef.current) {
+					currentCodeRef.current = parsed.code;
+					editorRef.current.setCode(parsed.code);
+				}
+			} catch {
+				// model didn't return JSON — message still shows
+			}
+		},
+	});
+
+	const isLoading = status === "streaming" || status === "submitted";
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: scroll on every message/loading change
+	useEffect(() => {
+		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+	}, [messages, isLoading]);
+
+	function submit() {
+		const text = input.trim();
+		if (!text || isLoading) return;
+		setInput("");
+		sendMessage({ text });
 	}
 
 	function handleKeyDown(e: React.KeyboardEvent) {
 		if (e.key === "Enter" && !e.shiftKey) {
 			e.preventDefault();
-			sendMessage();
+			submit();
+		}
+	}
+
+	function displayContent(msg: UIMessage) {
+		const text = msg.parts
+			.filter((p): p is { type: "text"; text: string } => p.type === "text")
+			.map((p) => p.text)
+			.join("");
+		try {
+			const parsed = JSON.parse(
+				text
+					.replace(/```json\n?/g, "")
+					.replace(/```\n?/g, "")
+					.trim(),
+			);
+			return parsed.message ?? text;
+		} catch {
+			return text;
 		}
 	}
 
@@ -123,12 +145,19 @@ export default function Home() {
 						<span className="text-zinc-700 mr-2">
 							{msg.role === "user" ? ">" : "$"}
 						</span>
-						{msg.text}
+						{displayContent(msg)}
 					</div>
 				))}
-				{isThinking && (
+				{isLoading && (
 					<div className="text-zinc-600">
-						<span className="mr-2">$</span>thinking...
+						<span className="mr-2">$</span>
+						<span className="animate-pulse">thinking...</span>
+					</div>
+				)}
+				{error && (
+					<div className="text-red-500">
+						<span className="mr-2">!</span>
+						{error.message}
 					</div>
 				)}
 				<div ref={messagesEndRef} />
@@ -142,12 +171,13 @@ export default function Home() {
 					value={input}
 					onChange={(e) => setInput(e.target.value)}
 					onKeyDown={handleKeyDown}
-					disabled={isThinking}
+					disabled={isLoading}
+					autoFocus
 				/>
 				<button
 					type="button"
-					onClick={sendMessage}
-					disabled={isThinking || !input.trim()}
+					onClick={submit}
+					disabled={isLoading || !input.trim()}
 					className="font-mono text-xs text-zinc-600 hover:text-zinc-300 disabled:opacity-30 transition-colors"
 				>
 					send
