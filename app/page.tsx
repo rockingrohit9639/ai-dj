@@ -39,6 +39,7 @@ export default function Home() {
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const editorInstanceRef = useRef<StrudelMirrorInstance | null>(null);
+  const currentCodeRef = useRef<string>(INITIAL_CODE);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   function scrollToBottom() {
@@ -58,12 +59,13 @@ export default function Home() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: text }),
+        body: JSON.stringify({ command: text, currentCode: currentCodeRef.current }),
       });
 
       const data = await res.json();
 
       if (data.code && editorInstanceRef.current) {
+        currentCodeRef.current = data.code;
         editorInstanceRef.current.setCode(data.code);
         editorInstanceRef.current.evaluate();
       }
@@ -108,6 +110,7 @@ export default function Home() {
           code={INITIAL_CODE}
           onReady={(editor) => {
             editorInstanceRef.current = editor;
+            currentCodeRef.current = INITIAL_CODE;
           }}
         />
       </div>
