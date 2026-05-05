@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; background: #0d0d0d; overflow: hidden; }
+
+    strudel-editor { display: none; }
+
+    /* The sibling div Strudel inserts next to strudel-editor */
+    body > div {
+      height: 100% !important;
+      width: 100%;
+    }
+
+    .cm-editor {
+      background: #0d0d0d !important;
+      height: 100% !important;
+    }
+    .cm-scroller {
+      height: 100%;
+      font-family: 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .cm-content { padding: 16px !important; }
+  </style>
+</head>
+<body>
+  <strudel-editor id="repl">// AI DJ
+// Click here then Ctrl+Enter to start · Ctrl+. to stop
+
+setcpm(128 / 4)
+
+$: sound("bd ~ bd ~")
+  .bank("RolandTR909")
+  .gain(1.2)
+</strudel-editor>
+
+  <script src="https://unpkg.com/@strudel/repl@1.3.0/dist/index.js"></script>
+
+  <script>
+    const el = document.getElementById('repl');
+
+    window.addEventListener('message', function(e) {
+      if (!e.data || !e.data.type) return;
+
+      if (e.data.type === 'set-code') {
+        const code = e.data.code;
+        // Set on the web component element
+        el.setAttribute('code', code);
+        // Also set directly on StrudelMirror instance
+        if (el.editor) {
+          el.editor.setCode(code);
+        }
+        // Dispatch evaluate event — same as Ctrl+Enter
+        document.dispatchEvent(new CustomEvent('repl-evaluate', { cancelable: true }));
+      }
+
+      if (e.data.type === 'stop') {
+        document.dispatchEvent(new CustomEvent('repl-stop', { cancelable: true }));
+      }
+    });
+  </script>
+</body>
+</html>

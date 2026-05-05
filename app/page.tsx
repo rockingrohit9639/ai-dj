@@ -2,8 +2,9 @@
 
 import { useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import type { StrudelEditorHandle } from '@/components/strudel-editor';
 
-const StrudelEditor = dynamic(() => import('@/components/StrudelEditor'), {
+const StrudelEditor = dynamic(() => import('@/components/strudel-editor'), {
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex items-center justify-center text-zinc-600 font-mono text-sm">
@@ -13,7 +14,7 @@ const StrudelEditor = dynamic(() => import('@/components/StrudelEditor'), {
 });
 
 const INITIAL_CODE = `// AI DJ — waiting for your command
-// Type something in the chat below to start
+// Click here then Ctrl+Enter to start · Ctrl+. to stop
 
 setcpm(128 / 4)
 
@@ -27,18 +28,13 @@ interface Message {
   text: string;
 }
 
-interface StrudelMirrorInstance {
-  setCode: (code: string) => void;
-  evaluate: () => void;
-}
-
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', text: 'Ready to play. Click the editor, hit Ctrl+Enter to start, then tell me what you want.' },
+    { role: 'assistant', text: 'Ready. Click the editor, Ctrl+Enter to start, then tell me what you want.' },
   ]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const editorInstanceRef = useRef<StrudelMirrorInstance | null>(null);
+  const editorRef = useRef<StrudelEditorHandle>(null);
   const currentCodeRef = useRef<string>(INITIAL_CODE);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -64,10 +60,9 @@ export default function Home() {
 
       const data = await res.json();
 
-      if (data.code && editorInstanceRef.current) {
+      if (data.code && editorRef.current) {
         currentCodeRef.current = data.code;
-        editorInstanceRef.current.setCode(data.code);
-        editorInstanceRef.current.evaluate();
+        editorRef.current.setCode(data.code);
       }
 
       setMessages(prev => [
@@ -94,28 +89,19 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0a] text-zinc-300">
-      {/* Header */}
       <header className="flex items-center justify-between px-5 py-3 border-b border-zinc-800 shrink-0">
         <span className="font-mono text-xs text-zinc-500 tracking-widest uppercase">
           AI DJ
         </span>
         <span className="font-mono text-xs text-zinc-600">
-          click editor → Ctrl+Enter to play · Ctrl+. to stop
+          Ctrl+Enter to play · Ctrl+. to stop
         </span>
       </header>
 
-      {/* Editor — takes remaining space */}
       <div className="flex-1 overflow-hidden">
-        <StrudelEditor
-          code={INITIAL_CODE}
-          onReady={(editor) => {
-            editorInstanceRef.current = editor;
-            currentCodeRef.current = INITIAL_CODE;
-          }}
-        />
+        <StrudelEditor ref={editorRef} />
       </div>
 
-      {/* Chat log */}
       <div className="h-36 overflow-y-auto px-5 py-3 border-t border-zinc-800 flex flex-col gap-2 text-sm font-mono">
         {messages.map((msg, i) => (
           <div key={i} className={msg.role === 'user' ? 'text-white' : 'text-zinc-500'}>
@@ -131,7 +117,6 @@ export default function Home() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input bar */}
       <div className="flex items-center gap-3 px-5 py-3 border-t border-zinc-800 shrink-0">
         <span className="text-zinc-600 font-mono text-sm">{'>'}</span>
         <input
