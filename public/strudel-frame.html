@@ -10,13 +10,13 @@
 
     /* The sibling div Strudel inserts next to strudel-editor */
     body > div {
-      height: 100% !important;
+      height: 100%;
       width: 100%;
     }
 
     .cm-editor {
-      background: #0d0d0d !important;
-      height: 100% !important;
+      background: #0d0d0d;
+      height: 100%;
     }
     .cm-scroller {
       height: 100%;
@@ -24,7 +24,7 @@
       font-size: 13px;
       line-height: 1.6;
     }
-    .cm-content { padding: 16px !important; }
+    .cm-content { padding: 16px; }
   </style>
 </head>
 <body>
@@ -43,8 +43,8 @@ $: sound("bd ~ bd ~")
   <script>
     const el = document.getElementById('repl');
 
-    window.addEventListener('message', function(e) {
-      if (!e.data || !e.data.type) return;
+    window.addEventListener('message', (e) => {
+      if (!e.data?.type) return;
 
       if (e.data.type === 'set-code') {
         const code = e.data.code;

@@ -1,1 +1,1 @@
-declare module '@strudel/repl';
+declare module "@strudel/repl";

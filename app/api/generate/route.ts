@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { GoogleGenAI } from "@google/genai";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { type NextRequest, NextResponse } from "next/server";
 
 const strudelRef = readFileSync(join(process.cwd(), "STRUDEL.md"), "utf-8");
 

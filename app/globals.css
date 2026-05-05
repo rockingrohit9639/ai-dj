@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+	--background: #0a0a0a;
+	--foreground: #ededed;
 }
 
 @theme inline {
@@ -12,41 +12,42 @@
   --font-mono: var(--font-geist-mono);
 }
 
-html, body {
-  height: 100%;
+html,
+body {
+	height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+	background: var(--background);
+	color: var(--foreground);
+	font-family: Arial, Helvetica, sans-serif;
 }
 
 /* Hide the strudel-editor element — Strudel inserts a sibling CodeMirror div */
 strudel-editor {
-  display: none;
+	display: none;
 }
 
 /* Target the sibling div Strudel creates */
 #strudel-mount > div {
-  height: 100% !important;
-  width: 100%;
+	height: 100% !important;
+	width: 100%;
 }
 
 /* CodeMirror dark styling */
 .cm-editor {
-  background: #0d0d0d !important;
-  height: 100% !important;
+	background: #0d0d0d !important;
+	height: 100% !important;
 }
 
 .cm-scroller {
-  overflow: auto;
-  height: 100%;
-  font-family: var(--font-geist-mono), 'Fira Code', monospace;
-  font-size: 13px;
-  line-height: 1.6;
+	overflow: auto;
+	height: 100%;
+	font-family: var(--font-geist-mono), "Fira Code", monospace;
+	font-size: 13px;
+	line-height: 1.6;
 }
 
 .cm-content {
-  padding: 16px !important;
+	padding: 16px !important;
 }

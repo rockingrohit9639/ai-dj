@@ -1,36 +1,37 @@
-'use client';
+"use client";
 
-import { useRef, useImperativeHandle, forwardRef } from 'react';
+import { forwardRef, useImperativeHandle, useRef } from "react";
 
 export interface StrudelEditorHandle {
-  setCode: (code: string) => void;
-  stop: () => void;
+	setCode: (code: string) => void;
+	stop: () => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-const StrudelEditor = forwardRef<StrudelEditorHandle, {}>(
-  (_, ref) => {
-    const iframeRef = useRef<HTMLIFrameElement>(null);
+const StrudelEditor = forwardRef<StrudelEditorHandle, object>((_, ref) => {
+	const iframeRef = useRef<HTMLIFrameElement>(null);
 
-    useImperativeHandle(ref, () => ({
-      setCode(code: string) {
-        iframeRef.current?.contentWindow?.postMessage({ type: 'set-code', code }, '*');
-      },
-      stop() {
-        iframeRef.current?.contentWindow?.postMessage({ type: 'stop' }, '*');
-      },
-    }));
+	useImperativeHandle(ref, () => ({
+		setCode(code: string) {
+			iframeRef.current?.contentWindow?.postMessage(
+				{ type: "set-code", code },
+				"*",
+			);
+		},
+		stop() {
+			iframeRef.current?.contentWindow?.postMessage({ type: "stop" }, "*");
+		},
+	}));
 
-    return (
-      <iframe
-        ref={iframeRef}
-        src="/strudel-frame.html"
-        className="h-full w-full border-0"
-        allow="autoplay"
-      />
-    );
-  }
-);
+	return (
+		<iframe
+			ref={iframeRef}
+			src="/strudel-frame.html"
+			title="Strudel live coding editor"
+			className="h-full w-full border-0"
+			allow="autoplay"
+		/>
+	);
+});
 
-StrudelEditor.displayName = 'StrudelEditor';
+StrudelEditor.displayName = "StrudelEditor";
 export default StrudelEditor;
