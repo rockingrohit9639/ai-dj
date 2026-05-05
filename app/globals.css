@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -12,15 +12,41 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  height: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Hide the strudel-editor element — Strudel inserts a sibling CodeMirror div */
+strudel-editor {
+  display: none;
+}
+
+/* Target the sibling div Strudel creates */
+#strudel-mount > div {
+  height: 100% !important;
+  width: 100%;
+}
+
+/* CodeMirror dark styling */
+.cm-editor {
+  background: #0d0d0d !important;
+  height: 100% !important;
+}
+
+.cm-scroller {
+  overflow: auto;
+  height: 100%;
+  font-family: var(--font-geist-mono), 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.cm-content {
+  padding: 16px !important;
 }
